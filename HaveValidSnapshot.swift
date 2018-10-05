@@ -97,7 +97,7 @@ func getDefaultReferenceDirectory(_ sourceFileName: String) -> String {
     if let globalReference = FBSnapshotTest.sharedInstance.referenceImagesDirectory {
         return globalReference
     }
-    
+
     if let environmentReference = ProcessInfo.processInfo.environment["FB_REFERENCE_IMAGE_DIR"] {
         return environmentReference
     }
