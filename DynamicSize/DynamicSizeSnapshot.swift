@@ -65,8 +65,8 @@ class ConstraintViewResizer: ViewResizer {
 
         view.layoutIfNeeded()
 
-        //iOS 9+ BUG: Before the first draw, iOS will not calculate the layout, 
-        // it add a _UITemporaryLayoutWidth equals to its bounds and create a conflict. 
+        //iOS 9+ BUG: Before the first draw, iOS will not calculate the layout,
+        // it add a _UITemporaryLayoutWidth equals to its bounds and create a conflict.
         // So to it do all the layout we create a Window and add it as subview
         if view.bounds.width != size.width || view.bounds.height != size.height {
             let window = UIWindow(frame: CGRect(origin: .zero, size: size))
@@ -163,38 +163,43 @@ func performDynamicSizeSnapshotTest(_ name: String?, identifier: String? = nil, 
 
     let resizer = resizeMode.viewResizer()
 
-    let result = sizes.map { (sizeName, size) -> Bool in
+    let result = sizes.compactMap { (sizeName, size) -> String? in
         // swiftlint:disable:next force_unwrapping
         let view = instance.snapshotObject!
-        let _snapshotName: String
-        
+        let sizeSnapshotName: String
+
         if let identifier = identifier {
-            _snapshotName = "\(snapshotName)_\(identifier) - \(sizeName)"
+            sizeSnapshotName = "\(snapshotName)_\(identifier) - \(sizeName)"
         } else {
-            _snapshotName = "\(snapshotName) - \(sizeName)"
+            sizeSnapshotName = "\(snapshotName) - \(sizeName)"
         }
 
         resizer.resize(view: view, for: size)
 
-        return FBSnapshotTest.compareSnapshot(instance, isDeviceAgnostic: isDeviceAgnostic, usesDrawRect: usesDrawRect,
-                                              snapshot: _snapshotName, record: isRecord,
-                                              referenceDirectory: referenceImageDirectory, tolerance: tolerance,
-                                              filename: actualExpression.location.file, identifier: nil)
+        if !FBSnapshotTest.compareSnapshot(instance, isDeviceAgnostic: isDeviceAgnostic, usesDrawRect: usesDrawRect,
+                                          snapshot: sizeSnapshotName, record: isRecord,
+                                          referenceDirectory: referenceImageDirectory, tolerance: tolerance,
+                                          filename: actualExpression.location.file, identifier: nil)
+        {
+            return sizeSnapshotName
+        }
+        return nil
     }
 
+    let failedNames = result.joined(separator: ", ")
     if isRecord {
-        if result.filter({ !$0 }).isEmpty {
+        if !failedNames.isEmpty {
+            failureMessage.actualValue = "expected to record a snapshot in \(failedNames)"
+        } else {
             let name = name ?? snapshotName
             failureMessage.actualValue = "snapshot \(name) successfully recorded, replace recordSnapshot with a check"
-        } else {
-            failureMessage.actualValue = "expected to record a snapshot in \(String(describing: name))"
         }
 
         return false
     } else {
-        if !result.filter({ !$0 }).isEmpty {
+        if !failedNames.isEmpty {
             clearFailureMessage(failureMessage)
-            failureMessage.actualValue = "expected a matching snapshot in \(snapshotName)"
+            failureMessage.actualValue = "expected a matching snapshot in \(failedNames)"
             return false
         }
 
